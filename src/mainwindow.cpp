@@ -3305,7 +3305,7 @@ void MainWindow::connLanDone(int connFlag)
 
 void MainWindow::connWifiDone(int connFlag)
 {
-    // Wifi连接结果，0点击连接成功 1失败 2没有配置文件 3开机启动网络工具时已经连接 4密码错误 5找不到该网络
+    // Wifi连接结果，0点击连接成功 1失败 2没有配置文件 3开机启动网络工具时已经连接 4密码错误 5找不到已保存的网络
     if (connFlag == 0) {
 	WifiAuthThread *wifi_auth_thread=new WifiAuthThread();
 	wifi_auth_thread->start();
