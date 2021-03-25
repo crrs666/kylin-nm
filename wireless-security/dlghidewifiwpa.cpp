@@ -299,80 +299,47 @@ void DlgHideWifiWpa::on_btnConnect_clicked()
 
     strWifiname = wifiName;
     strWifiPassword = wifiPassword;
+    BackThread *bt = new BackThread();
     if (isUsed == 0) {
-        BackThread *bt = new BackThread();
         bt->moveToThread(t);
         connect(t, SIGNAL(started()), this, SLOT(slotStartConnectHiddenWifi()));
         connect(this, SIGNAL(sigConnHiddenWifi(QString, QString)), bt, SLOT(execConnHiddenWifiWPA(QString,QString)));
         connect(bt, SIGNAL(connDone(int)), mw, SLOT(connWifiDone(int)));
-//        connect(bt, SIGNAL(connDone(int)), this, SLOT(slotConnWifiResult(int)));
         connect(bt, SIGNAL(btFinish()), t, SLOT(quit()));
-
-//        QFuture < void > future1 =  QtConcurrent::run([=](){
-//            int x(1), n(0);
-//            do {
-//                sleep(2);
-//                n += 1;
-//                if (n >= 20) {
-//                    x = 0;
-//                    mw->is_connect_hide_wifi = 0;
-//                }
-
-//                QString tmpPath = "/tmp/kylin-nm-btoutput-" + QDir::home().dirName();
-//                QString cmd = "nmcli device wifi connect '" + wifiName + "' password '" + wifiPassword + "' hidden yes > " + tmpPath + " 2>&1";
-
-//                int status = system(cmd.toUtf8().data());
-//                if (status != 0) {
-//                    syslog(LOG_ERR, "execute 'nmcli device wifi connect' in function 'on_btnConnect_clicked' failed");
-//                }
-
-//                QFile file(tmpPath);
-//                if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-//                    qDebug()<<"Can't open the file!"<<endl;
-//                }
-//                QString text = file.readAll();
-//                file.close();
-//                if(text.indexOf("Scanning not allowed") != -1 || text.isEmpty()){x = 1;} else { x = 0;}
-//            } while (x == 1);
-
-//            //屏蔽下面两行可以大大减小崩溃的概率
-//        });
     } else {
-        shellProcess = new QProcess(this);
-        shellProcess->start("nmcli -f ssid device wifi");
-        connect(shellProcess, &QProcess::readyRead, [ = ]() {
-            QString output = shellProcess->readAll();
-            shellOutput += output;
-        });
-        connect(shellProcess, SIGNAL(finished(int)), this, SLOT(finishedProcess(int)));
+        bt->moveToThread(t);
+        connect(t, SIGNAL(started()), this, SLOT(slotStartConnectRememberedHiddenWifi()));
+        connect(this, SIGNAL(sigConnRememberedHiddenWifi(QString)), bt, SLOT(execConnRememberedHiddenWifi(QString)));
+        connect(bt, SIGNAL(connDone(int)), mw, SLOT(connWifiDone(int)));
+        connect(bt, SIGNAL(btFinish()), t, SLOT(quit()));
     }
     t->start();
     this->close();
 }
 
-void DlgHideWifiWpa::finishedProcess(int state) {
-    if (! state) syslog(LOG_ERR, "Scan wifi list failed in functin on_btnConnect_clicked() in dlghidewifiwpa.cpp 359.");
-    wlist = shellOutput.split("\n");
-    bool is_hidden  = true;
-    foreach (QString wifi, wlist) {
-        if (wifi.trimmed() == ui->leNetName->text()) {
-            is_hidden = false;
-        }
-    }
-    if (! is_hidden) {
-        BackThread *bt = new BackThread();
-        bt->execConnWifi(ui->leNetName->text());
-        QTimer::singleShot(4*1000, this, SLOT(emitSignal() ));
-    } else {
-        //已保存的wifi没有在wifi列表找到（隐藏wifi保存后也会出现在wifi列表），则当前区域无法连接此wifi
-        syslog(LOG_DEBUG, "Choosen wifi can not be sacnned in finishedProcess() in dlghidewifiwpa.cpp 377.");
-        QString txt(tr("Selected Wifi has not been scanned."));
-        mw->objKyDBus->showDesktopNotify(txt);
-        emit this->stopSignal();
-        emit reSetWifiList();
-    }
-    shellProcess->deleteLater();
-}
+//void DlgHideWifiWpa::finishedProcess(int state) {
+//    if (! state) syslog(LOG_ERR, "Scan wifi list failed in functin on_btnConnect_clicked() in dlghidewifiwpa.cpp 359.");
+//    wlist = shellOutput.split("\n");
+//    bool is_hidden  = true;
+//    foreach (QString wifi, wlist) {
+//        if (wifi.trimmed() == ui->leNetName->text()) {
+//            is_hidden = false;
+//        }
+//    }
+//    if (! is_hidden) {
+//        BackThread *bt = new BackThread();
+//        bt->execConnWifi(ui->leNetName->text());
+//        QTimer::singleShot(4*1000, this, SLOT(emitSignal() ));
+//    } else {
+//        //已保存的wifi没有在wifi列表找到（隐藏wifi保存后也会出现在wifi列表），则当前区域无法连接此wifi
+//        syslog(LOG_DEBUG, "Choosen wifi can not be sacnned in finishedProcess() in dlghidewifiwpa.cpp 377.");
+//        QString txt(tr("Selected Wifi has not been scanned."));
+//        mw->objKyDBus->showDesktopNotify(txt);
+//        emit this->stopSignal();
+//        emit reSetWifiList();
+//    }
+//    shellProcess->deleteLater();
+//}
 
 void DlgHideWifiWpa::on_checkBoxPwd_stateChanged(int arg1)
 {
@@ -410,6 +377,12 @@ void DlgHideWifiWpa::slotStartConnectHiddenWifi()
 {
     mw->startLoading();
     emit sigConnHiddenWifi(ui->leNetName->text(), ui->lePassword->text());
+}
+
+void DlgHideWifiWpa::slotStartConnectRememberedHiddenWifi()
+{
+    mw->startLoading();
+    emit sigConnRememberedHiddenWifi(ui->leNetName->text());
 }
 
 void DlgHideWifiWpa::on_execSecConn()
