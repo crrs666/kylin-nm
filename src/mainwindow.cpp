@@ -3327,6 +3327,7 @@ void MainWindow::connWifiDone(int connFlag)
         QString txt(tr("Confirm your Wi-Fi password"));
         objKyDBus->showDesktopNotify(txt);
     }
+    this->stopLoading();
     is_stop_check_net_state = 0;
 }
 

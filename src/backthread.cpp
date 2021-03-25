@@ -329,6 +329,47 @@ void BackThread::execConnWifiPWD(QString connName, QString password, QString con
     emit btFinish();
 }
 
+void BackThread::execConnHiddenWifiWPA(QString wifiName, QString wifiPassword)
+{
+    int x(1), n(0);
+    do {
+        n += 1;
+        if (n >= 3) {
+            syslog(LOG_ERR, "connection attempt of hidden wifi %s failed for 3 times, no more attempt", wifiName);
+            x = 0;
+            emit connDone(1);
+        }
+
+        QString tmpPath = "/tmp/kylin-nm-btoutput-" + QDir::home().dirName();
+        QString cmd = "nmcli device wifi connect '" + wifiName + "' password '" + wifiPassword + "' hidden yes > " + tmpPath + " 2>&1";
+
+//                qDebug() << Q_FUNC_INFO << cmd << tmpPath;
+        int status = Utils::m_system(cmd.toUtf8().data());
+        if (status != 0) {
+            syslog(LOG_ERR, "execute 'nmcli device wifi connect' in function 'on_btnConnect_clicked' failed");
+        }
+
+        QFile file(tmpPath);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            qDebug()<<"Can't open the file!"<<endl;
+        }
+        QString text = file.readAll();
+        file.close();
+        if(text.indexOf("Scanning not allowed") != -1
+           || text.isEmpty()
+           || text.indexOf("No network with SSID") != -1){
+            x = 1;
+            sleep(15);//nm扫描冷却为10s
+        } else {
+            emit connDone(0);
+            x = 0;
+        }
+//                qDebug() << Q_FUNC_INFO << x << text;
+    } while (x == 1);
+
+    emit btFinish();
+}
+
 void BackThread::execConnWifiPsk(QString cmd)
 {
     int res = Utils::m_system(cmd.toUtf8().data());
